@@ -1,0 +1,5 @@
+dist: focal
+language: java
+jdk: openjdk17
+before_install:
+  - chmod +x mvnw
