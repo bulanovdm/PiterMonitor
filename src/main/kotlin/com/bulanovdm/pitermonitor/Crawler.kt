@@ -70,6 +70,7 @@ class CrawlService(private val bookMailService: BookMailService) : ApplicationLi
                 }
             }
         }
+        log.info("Books in memory: {}", bookList.size)
     }
 
     override fun onApplicationEvent(event: ContextRefreshedEvent) {
