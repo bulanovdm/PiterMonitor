@@ -22,7 +22,7 @@ class CrawlService(private val bookMailService: BookMailService) : ApplicationLi
     val bookList = CopyOnWriteArrayList<Book>()
     val bookToSend = mutableListOf<Book>()
 
-    @Scheduled(initialDelay = 10, fixedRate = 10, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 1, fixedRate = 1, timeUnit = TimeUnit.HOURS)
     fun crawlAndSendUpdates() {
         populate()
         sendBookUpdates()
