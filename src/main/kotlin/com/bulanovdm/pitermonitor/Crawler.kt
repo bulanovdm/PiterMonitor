@@ -53,6 +53,7 @@ class CrawlService(private val bookMailService: BookMailService) : ApplicationLi
 
             if (bookList.none { it.name == book.name} ) {
                 bookList.add(book)
+                log.info("Book added: {}", book)
             }
 
             for (variant in variants) {
