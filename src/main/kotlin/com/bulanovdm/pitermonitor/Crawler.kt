@@ -27,7 +27,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     val bookCHM = ConcurrentHashMap<String, String>(512);
     val bookToSend = mutableListOf<Book>()
 
-    @Scheduled(initialDelay = 10, fixedRate = 60, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 30, fixedRate = 60, timeUnit = TimeUnit.MINUTES)
     fun populateSendMail() {
         for (kv in bookCHM) {
             val getBookByLink: Document = Jsoup.connect(kv.value).get()
@@ -93,6 +93,8 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     }
 
     override fun onApplicationEvent(event: ContextRefreshedEvent) {
+        booksRepository.deleteAll()
+        log.info("Cleared. Books in memory: {}", booksRepository.count())
         populate()
     }
 }
