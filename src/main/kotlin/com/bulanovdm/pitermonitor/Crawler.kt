@@ -28,29 +28,42 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     val bookToSend = mutableListOf<Book>()
 
     @Scheduled(initialDelay = 10, fixedRate = 60, timeUnit = TimeUnit.MINUTES)
-    fun crawlAndSendUpdates() {
-        populate()
-        sendBookUpdates()
-    }
+    fun populateSendMail() {
+        for (kv in bookCHM) {
+            val getBookByLink: Document = Jsoup.connect(kv.value).get()
+            val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
 
-    fun sendBookUpdates() {
-        if (bookToSend.isNotEmpty()) {
-            bookMailService.sendChangedBooks(bookToSend)
+            for (variant in variants) {
+                val varTitle = variant.getElementsByClass("variant-title")
+                val varPrice: Elements = variant.getElementsByClass("right grid-6 price color")
+                val currentParsedVariant = Variant(
+                    varTitle.eachText().firstOrNull() ?: "Нет в продаже",
+                    varPrice.eachText().firstOrNull() ?: "Отсутсвует"
+                )
+
+                val book = booksRepository.findById(kv.key).orElseThrow()
+                if (!book.variants.contains(currentParsedVariant)) {
+                    bookToSend.add(book)
+                }
+            }
         }
-        log.info("Mail ready. Books to send: {}", bookToSend.toString())
-        bookToSend.clear()
+        if (bookToSend.isNotEmpty()) {
+            log.info("Mail ready. Books to send: {}", bookToSend.toString())
+            bookMailService.sendChangedBooks(bookToSend)
+            bookToSend.clear()
+        }
     }
 
     fun populate() {
         log.info("Start Crawler at ${LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)}")
-
         for (i in 1 until 12) {
             val doc: Document =
-                Jsoup.connect("https://www.piter.com/collection/diskont?only_available=true&order=&page=${i}&page_size=100&q=")
-                    .get()
+                Jsoup.connect("https://www.piter.com/collection/diskont?only_available=true&order=&page=${i}&page_size=100&q=").get()
             val products: Elements = doc.select(".products-list > * > a")
             for (product in products) {
-                bookCHM[product.attr("title")] = "https://www.piter.com" + product.attr("href")
+                if (product.attr("title").isNotEmpty()) {
+                    bookCHM[product.attr("title")] = "https://www.piter.com" + product.attr("href")
+                }
             }
         }
 
@@ -58,10 +71,6 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
             val getBookByLink: Document = Jsoup.connect(kv.value).get()
             val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
             val book = Book(kv.key, kv.value, mutableListOf())
-
-            if (booksRepository.findAll().none { it.name == book.name }) {
-                booksRepository.save(book)
-            }
 
             for (variant in variants) {
                 val varTitle = variant.getElementsByClass("variant-title")
@@ -73,7 +82,10 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
 
                 if (!book.variants.contains(currentParsedVariant)) {
                     book.variants.add(currentParsedVariant)
-                    bookToSend.add(book)
+                }
+
+                if (booksRepository.findAll().none { it.name == book.name }) {
+                    booksRepository.save(book)
                 }
             }
         }

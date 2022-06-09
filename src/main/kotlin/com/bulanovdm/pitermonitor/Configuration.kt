@@ -1,5 +1,6 @@
 package com.bulanovdm.pitermonitor
 
+import io.lettuce.core.RedisURI
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -10,7 +11,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.JavaMailSenderImpl
-import java.util.*
+import java.util.Properties
 
 
 @Configuration
@@ -36,11 +37,10 @@ class Configurations(val mailProperties: MailProperties, val redisProperties: Re
 
     @Bean
     fun redisConnectionFactory(): LettuceConnectionFactory {
-        val redisStandaloneConfiguration = RedisStandaloneConfiguration()
+        val redisURI = RedisURI.create(redisProperties.url)
+        val redisStandaloneConfiguration = RedisStandaloneConfiguration(redisURI.host, redisURI.port)
         redisStandaloneConfiguration.database = redisProperties.database
-        redisStandaloneConfiguration.hostName = redisProperties.host
-        redisStandaloneConfiguration.port = redisProperties.port
-        redisStandaloneConfiguration.password = RedisPassword.of(redisProperties.password)
+        redisStandaloneConfiguration.password = RedisPassword.of(redisURI.password)
         return LettuceConnectionFactory(redisStandaloneConfiguration)
     }
 
