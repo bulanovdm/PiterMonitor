@@ -28,7 +28,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     val bookToSend = mutableListOf<Book>()
 
     @Scheduled(initialDelay = 30, fixedRate = 60, timeUnit = TimeUnit.MINUTES)
-    fun populateSendMail() {
+    fun readySendMail() {
         for (kv in bookCHM) {
             val getBookByLink: Document = Jsoup.connect(kv.value).get()
             val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
@@ -84,7 +84,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                     book.variants.add(currentParsedVariant)
                 }
 
-                if (booksRepository.findAll().none { it.name == book.name }) {
+                if (booksRepository.findAll().none { it.name == book.name && it.variants.contains(currentParsedVariant) }) {
                     booksRepository.save(book)
                 }
             }
@@ -93,8 +93,6 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     }
 
     override fun onApplicationEvent(event: ContextRefreshedEvent) {
-        booksRepository.deleteAll()
-        log.info("Cleared. Books in memory: {}", booksRepository.count())
         populate()
     }
 }
