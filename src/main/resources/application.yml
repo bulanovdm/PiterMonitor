@@ -3,3 +3,7 @@ mail:
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     recipient: ${MAIL_RECIPIENT}
+
+spring:
+  redis:
+    url: ${REDIS_URL}
