@@ -85,6 +85,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                 }
 
                 if (booksRepository.findAll().none { it.name == book.name && it.variants.contains(currentParsedVariant) }) {
+                    log.info("Book saved: {}", book)
                     booksRepository.save(book)
                 }
             }
