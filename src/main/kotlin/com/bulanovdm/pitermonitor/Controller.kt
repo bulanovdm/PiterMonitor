@@ -11,4 +11,9 @@ class BookController(private val crawlService: CrawlService) {
     fun getAllBooks() : ResponseEntity<List<Book>> {
         return ResponseEntity.ok(crawlService.bookList.toList())
     }
+
+    @GetMapping("/")
+    fun get() : ResponseEntity<String> {
+        return ResponseEntity.ok("ok")
+    }
 }

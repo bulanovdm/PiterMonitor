@@ -18,11 +18,11 @@ import java.util.concurrent.TimeUnit
 @Service
 class CrawlService(private val bookMailService: BookMailService) : ApplicationListener<ContextRefreshedEvent> {
     private val log = LoggerFactory.getLogger(javaClass)
-    val bookCHM = ConcurrentHashMap<String, String>();
+    val bookCHM = ConcurrentHashMap<String, String>(512);
     val bookList = CopyOnWriteArrayList<Book>()
     val bookToSend = mutableListOf<Book>()
 
-    @Scheduled(initialDelay = 1, fixedRate = 1, timeUnit = TimeUnit.HOURS)
+    @Scheduled(initialDelay = 10, fixedRate = 60, timeUnit = TimeUnit.MINUTES)
     fun crawlAndSendUpdates() {
         populate()
         sendBookUpdates()
@@ -30,7 +30,7 @@ class CrawlService(private val bookMailService: BookMailService) : ApplicationLi
 
     fun sendBookUpdates() {
         if (bookToSend.isNotEmpty()) {bookMailService.sendChangedBooks(bookToSend)}
-        log.info(bookToSend.toString())
+        log.info("Mail ready. Books to send: {}", bookToSend.toString())
         bookToSend.clear()
     }
 
@@ -42,26 +42,25 @@ class CrawlService(private val bookMailService: BookMailService) : ApplicationLi
                 Jsoup.connect("https://www.piter.com/collection/diskont?only_available=true&order=&page=${i}&page_size=100&q=").get()
             val products: Elements = doc.select(".products-list > * > a")
             for (product in products) {
-                bookCHM[product.attr("title").trim()] = "https://www.piter.com" + product.attr("href").trim()
+                bookCHM[product.attr("title")] = "https://www.piter.com" + product.attr("href")
             }
         }
 
         for (kv in bookCHM) {
-            val get: Document = Jsoup.connect(kv.value).get()
-            val variants: Elements = get.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
+            val getBookByLink: Document = Jsoup.connect(kv.value).get()
+            val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
             val book = Book(kv.key, kv.value, mutableListOf())
 
             if (bookList.none { it.name == book.name} ) {
                 bookList.add(book)
-                log.info("Book added: {}", book)
             }
 
             for (variant in variants) {
                 val varTitle = variant.getElementsByClass("variant-title")
                 val varPrice: Elements = variant.getElementsByClass("right grid-6 price color")
                 val currentParsedVariant = Variant(
-                    varTitle.eachText().firstOrNull()?.trim() ?: "Нет в продаже",
-                    varPrice.eachText().firstOrNull()?.trim() ?: "Отсутсвует"
+                    varTitle.eachText().firstOrNull() ?: "Нет в продаже",
+                    varPrice.eachText().firstOrNull() ?: "Отсутсвует"
                 )
 
                 if (!book.variants.contains(currentParsedVariant)) {
