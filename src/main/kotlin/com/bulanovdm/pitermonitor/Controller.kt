@@ -12,6 +12,11 @@ class BookController(private val booksRepository: BooksRepository) {
         return ResponseEntity.ok(booksRepository.findAll().toList())
     }
 
+    @GetMapping("/discount")
+    fun getAllDiscountBooks() : ResponseEntity<List<Book>> {
+        return ResponseEntity.ok(booksRepository.findAll().filter { it.variants.any { v -> v.variantName == "Дисконт"} }.toList())
+    }
+
     @GetMapping("/")
     fun get() : ResponseEntity<String> {
         return ResponseEntity.ok("ok")
