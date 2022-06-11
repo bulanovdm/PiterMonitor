@@ -24,14 +24,17 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     ApplicationListener<ContextRefreshedEvent> {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    val bookCHM = ConcurrentHashMap<String, String>(512);
+    val bookCHM = ConcurrentHashMap<String, String>(1024);
     val bookToSend = mutableListOf<Book>()
+    val bookToSendWas = mutableListOf<Book>()
 
-    @Scheduled(initialDelay = 30, fixedRate = 60, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 15, fixedRate = 30, timeUnit = TimeUnit.MINUTES)
     fun readySendMail() {
         for (kv in bookCHM) {
             val getBookByLink: Document = Jsoup.connect(kv.value).get()
             val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
+            val oldBook = booksRepository.findById(kv.key).get()
+            val changedBook = Book(kv.key, kv.value, mutableListOf())
 
             for (variant in variants) {
                 val varTitle = variant.getElementsByClass("variant-title")
@@ -40,25 +43,35 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                     varTitle.eachText().firstOrNull() ?: "Нет в продаже",
                     varPrice.eachText().firstOrNull() ?: "Отсутсвует"
                 )
+                changedBook.variants.add(currentParsedVariant)
 
-                val book = booksRepository.findById(kv.key).orElseThrow()
-                if (!book.variants.contains(currentParsedVariant)) {
-                    bookToSend.add(book)
+                if (!oldBook.variants.contains(currentParsedVariant)) {
+                    bookToSendWas.add(oldBook)
+                    bookToSend.add(changedBook)
+
                 }
             }
+            if (oldBook != changedBook) {
+                log.info("Book updated after mail: {}", changedBook)
+                booksRepository.save(changedBook)
+            }
         }
+
         if (bookToSend.isNotEmpty()) {
             log.info("Mail ready. Books to send: {}", bookToSend.toString())
-            bookMailService.sendChangedBooks(bookToSend)
+            bookMailService.sendChangedBooks(bookToSend, bookToSendWas)
             bookToSend.clear()
         }
     }
 
     fun populate() {
         log.info("Start Crawler at ${LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)}")
-        for (i in 1 until 12) {
+        val findAllBooksInRedis = booksRepository.findAll()
+
+        for (i in 1 until 6) {
             val doc: Document =
-                Jsoup.connect("https://www.piter.com/collection/diskont?only_available=true&order=&page=${i}&page_size=100&q=").get()
+                Jsoup.connect("https://www.piter.com/collection/kompyutery-i-internet?only_available=true&order=&page=$i&page_size=100&q=")
+                    .get()
             val products: Elements = doc.select(".products-list > * > a")
             for (product in products) {
                 if (product.attr("title").isNotEmpty()) {
@@ -84,7 +97,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                     book.variants.add(currentParsedVariant)
                 }
 
-                if (booksRepository.findAll().none { it.name == book.name && it.variants.contains(currentParsedVariant) }) {
+                if (findAllBooksInRedis.none { it.name == book.name && it.variants.contains(currentParsedVariant) }) {
                     log.info("Book saved: {}", book)
                     booksRepository.save(book)
                 }
