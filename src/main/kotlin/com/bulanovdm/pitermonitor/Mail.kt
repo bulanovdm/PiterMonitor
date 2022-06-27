@@ -16,7 +16,7 @@ class MailService(private val javaMailSender: JavaMailSender, private val mailPr
 @Component
 class BookMailService(private val mailService: MailService, private val mailProperties: MailProperties) {
 
-    fun sendChangedBooks(books: List<Book>, booksWas: List<Book>) {
+    fun sendChangedBooks(books: Set<Book>, booksWas: Set<Book>) {
         val emailText = "Next books was/were updated: \n ${books.joinToString(separator = "\n") { "$it \n" }}"
         val emailTextWas = "Was: \n ${booksWas.joinToString(separator = "\n") { "$it \n" }}"
         sendMessage(emailText + emailTextWas, mailProperties.recipient)

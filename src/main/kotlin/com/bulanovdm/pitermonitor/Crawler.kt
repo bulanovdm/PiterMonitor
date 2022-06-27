@@ -25,8 +25,8 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
 
     private val log = LoggerFactory.getLogger(javaClass)
     val bookCHM = ConcurrentHashMap<String, String>(1024);
-    val bookToSend = mutableListOf<Book>()
-    val bookToSendWas = mutableListOf<Book>()
+    val bookToSend = mutableSetOf<Book>()
+    val bookToSendWas = mutableSetOf<Book>()
 
     @Scheduled(initialDelay = 15, fixedRate = 30, timeUnit = TimeUnit.MINUTES)
     fun readySendMail() {
