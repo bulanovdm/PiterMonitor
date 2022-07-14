@@ -45,10 +45,10 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                 )
                 changedBook.variants.add(currentParsedVariant)
 
-                if (!oldBook.variants.contains(currentParsedVariant)) {
+                if (!oldBook.variants.contains(currentParsedVariant) &&
+                    changedBook.variants.any { it.variantName === "Дисконт" && it.variantPrice !== "Отсутсвует" } ) {
                     bookToSendWas.add(oldBook)
                     bookToSend.add(changedBook)
-
                 }
             }
             if (oldBook != changedBook) {
