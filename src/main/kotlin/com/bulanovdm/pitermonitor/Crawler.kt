@@ -45,8 +45,8 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                 )
                 changedBook.variants.add(currentParsedVariant)
 
-                if (!oldBook.variants.contains(currentParsedVariant) &&
-                    changedBook.variants.any { it.variantName === "Дисконт" && it.variantPrice !== "Отсутсвует" } ) {
+                if (!oldBook.variants.contains(currentParsedVariant) && changedBook.variants.any { it.variantName == "Дисконт" }
+                ) {
                     bookToSendWas.add(oldBook)
                     bookToSend.add(changedBook)
                 }
@@ -60,6 +60,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
         if (bookToSend.isNotEmpty()) {
             log.info("Mail ready. Books to send: {}", bookToSend.toString())
             bookMailService.sendChangedBooks(bookToSend, bookToSendWas)
+            bookToSendWas.clear()
             bookToSend.clear()
         }
     }
