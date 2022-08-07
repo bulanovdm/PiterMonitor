@@ -32,7 +32,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     val bookToSendWas = CopyOnWriteArraySet<Book>()
     val threadPoolExecutor = ThreadPoolExecutor(8,16, 30L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
 
-    @Scheduled(initialDelay = 1, fixedRate = 30, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 15, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     fun readySendMail() {
         for (kv in bookCHM) {
             threadPoolExecutor.submit {
