@@ -16,6 +16,9 @@ import java.io.Serializable
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 
@@ -24,13 +27,15 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
     ApplicationListener<ContextRefreshedEvent> {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    val bookCHM = ConcurrentHashMap<String, String>(1024);
-    val bookToSend = mutableSetOf<Book>()
-    val bookToSendWas = mutableSetOf<Book>()
+    val bookCHM = ConcurrentHashMap<String, String>(512, 0.95f)
+    val bookToSend = CopyOnWriteArraySet<Book>()
+    val bookToSendWas = CopyOnWriteArraySet<Book>()
+    val threadPoolExecutor = ThreadPoolExecutor(8,16, 30L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
 
-    @Scheduled(initialDelay = 15, fixedRate = 30, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 1, fixedRate = 30, timeUnit = TimeUnit.MINUTES)
     fun readySendMail() {
         for (kv in bookCHM) {
+            threadPoolExecutor.submit {
             val getBookByLink: Document = Jsoup.connect(kv.value).get()
             val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
             val oldBook = booksRepository.findById(kv.key).get()
@@ -55,7 +60,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
                 log.info("Book updated after mail: {}", changedBook)
                 booksRepository.save(changedBook)
             }
-        }
+        }}
 
         if (bookToSend.isNotEmpty()) {
             log.info("Mail ready. Books to send: {}", bookToSend.toString())
