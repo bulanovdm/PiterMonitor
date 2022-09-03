@@ -15,7 +15,7 @@
     <description>PiterMonitor</description>
     <properties>
         <java.version>17</java.version>
-        <kotlin.version>1.7.0</kotlin.version>
+        <kotlin.version>1.7.10</kotlin.version>
         <spring-boot.build-image.imageName>pitermonitor</spring-boot.build-image.imageName>
     </properties>
     <dependencies>
