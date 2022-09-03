@@ -6,4 +6,5 @@ mail:
 
 spring:
   redis:
-    url: ${REDIS_URL}
+    host: redislocal
+    port: 6379

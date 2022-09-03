@@ -1,11 +1,14 @@
 package com.bulanovdm.pitermonitor
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
 import org.slf4j.LoggerFactory
-import org.springframework.context.ApplicationListener
-import org.springframework.context.event.ContextRefreshedEvent
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
+import org.springframework.core.env.Profiles
 import org.springframework.data.annotation.Id
 import org.springframework.data.redis.core.RedisHash
 import org.springframework.data.repository.CrudRepository
@@ -17,50 +20,49 @@ import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 
 @Service
-class CrawlService(private val bookMailService: BookMailService, val booksRepository: BooksRepository) :
-    ApplicationListener<ContextRefreshedEvent> {
+class CrawlService(private val bookMailService: BookMailService, val booksRepository: BooksRepository) {
 
     private val log = LoggerFactory.getLogger(javaClass)
     val bookCHM = ConcurrentHashMap<String, String>(512, 0.95f)
     val bookToSend = CopyOnWriteArraySet<Book>()
     val bookToSendWas = CopyOnWriteArraySet<Book>()
-    val threadPoolExecutor = ThreadPoolExecutor(8,16, 30L, TimeUnit.MILLISECONDS, LinkedBlockingQueue())
 
     @Scheduled(initialDelay = 15, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     fun readySendMail() {
         for (kv in bookCHM) {
-            threadPoolExecutor.submit {
-            val getBookByLink: Document = Jsoup.connect(kv.value).get()
-            val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
-            val oldBook = booksRepository.findById(kv.key).get()
-            val changedBook = Book(kv.key, kv.value, mutableListOf())
+            runBlocking { // this: CoroutineScope
+                launch {
+                    val getBookByLink: Document = Jsoup.connect(kv.value).get()
+                    val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
+                    val oldBook = booksRepository.findById(kv.key).get()
+                    val changedBook = Book(kv.key, kv.value, mutableListOf())
 
-            for (variant in variants) {
-                val varTitle = variant.getElementsByClass("variant-title")
-                val varPrice: Elements = variant.getElementsByClass("right grid-6 price color")
-                val currentParsedVariant = Variant(
-                    varTitle.eachText().firstOrNull() ?: "Нет в продаже",
-                    varPrice.eachText().firstOrNull() ?: "Отсутсвует"
-                )
-                changedBook.variants.add(currentParsedVariant)
+                    for (variant in variants) {
+                        val varTitle = variant.getElementsByClass("variant-title")
+                        val varPrice: Elements = variant.getElementsByClass("right grid-6 price color")
+                        val currentParsedVariant = Variant(
+                            varTitle.eachText().firstOrNull() ?: "Нет в продаже",
+                            varPrice.eachText().firstOrNull() ?: "Отсутсвует"
+                        )
+                        changedBook.variants.add(currentParsedVariant)
 
-                if (!oldBook.variants.contains(currentParsedVariant) && changedBook.variants.any { it.variantName == "Дисконт" }
-                ) {
-                    bookToSendWas.add(oldBook)
-                    bookToSend.add(changedBook)
+                        if (!oldBook.variants.contains(currentParsedVariant) && changedBook.variants.any { it.variantName == "Дисконт" }
+                        ) {
+                            bookToSendWas.add(oldBook)
+                            bookToSend.add(changedBook)
+                        }
+                    }
+                    if (oldBook != changedBook) {
+                        log.info("Book updated after mail: {}", changedBook)
+                        booksRepository.save(changedBook)
+                    }
                 }
             }
-            if (oldBook != changedBook) {
-                log.info("Book updated after mail: {}", changedBook)
-                booksRepository.save(changedBook)
-            }
-        }}
+        }
 
         if (bookToSend.isNotEmpty()) {
             log.info("Mail ready. Books to send: {}", bookToSend.toString())
@@ -112,8 +114,11 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
         log.info("Books in memory: {}", booksRepository.count())
     }
 
-    override fun onApplicationEvent(event: ContextRefreshedEvent) {
-        populate()
+    @EventListener
+    fun onApplicationEvent(event: ApplicationReadyEvent) {
+        if (event.applicationContext.environment.acceptsProfiles(Profiles.of("dev"))) {
+            populate()
+        }
     }
 }
 
