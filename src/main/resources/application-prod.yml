@@ -8,7 +8,3 @@ mail:
 spring:
   redis:
     url: ${REDIS_URL}
-
-  config:
-    activate:
-      on-profile: ${SPRING_PROFILES}
