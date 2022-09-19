@@ -10,5 +10,6 @@ spring:
   redis:
     url: ${REDIS_URL}
 
-  profiles:
-    active: ${SPRING_PROFILES}
+  config:
+    activate:
+      on-profile: ${SPRING_PROFILES}

@@ -118,7 +118,7 @@ class CrawlService(private val bookMailService: BookMailService, val booksReposi
 
     @EventListener
     fun onApplicationEvent(event: ApplicationReadyEvent) {
-        if (event.applicationContext.environment.acceptsProfiles(Profiles.of("dev"))) {
+        if (event.applicationContext.environment.acceptsProfiles(Profiles.of("prod"))) {
             populate()
         }
     }
