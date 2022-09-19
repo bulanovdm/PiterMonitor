@@ -22,7 +22,7 @@ class Configurations(val mailProperties: MailProperties, val redisProperties: Re
     fun mailSender(): JavaMailSender {
         val mailSender = JavaMailSenderImpl()
         mailSender.host = mailProperties.host
-        mailSender.port = mailProperties.port.toInt()
+        mailSender.port = 587
         mailSender.username = mailProperties.username
         mailSender.password = mailProperties.password
 
@@ -68,5 +68,4 @@ class MailProperties {
     lateinit var password: String
     lateinit var recipient: String
     lateinit var host: String
-    lateinit var port: String
 }
