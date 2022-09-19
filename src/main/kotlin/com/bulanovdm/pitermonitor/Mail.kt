@@ -5,10 +5,9 @@ import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.stereotype.Component
 
 @Component
-class MailService(private val javaMailSender: JavaMailSender, private val mailProperties: MailProperties) {
+class MailService(private val javaMailSender: JavaMailSender) {
 
-    fun send(mailMessage: SimpleMailMessage) {
-        mailMessage.setFrom(mailProperties.username)
+    internal fun send(mailMessage: SimpleMailMessage) {
         javaMailSender.send(mailMessage)
     }
 }
@@ -27,7 +26,7 @@ class BookMailService(private val mailService: MailService, private val mailProp
         message.setSubject("Books updated")
         message.setText(emailText)
         message.setTo(recipientEmail)
-        message.setFrom("sandbox.mgsend.net")
+        message.setFrom(mailProperties.username)
         mailService.send(message)
     }
 }

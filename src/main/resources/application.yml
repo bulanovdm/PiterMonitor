@@ -1,10 +1,11 @@
 mail:
   conf:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     recipient: ${MAIL_RECIPIENT}
 
 spring:
   redis:
-    host: ${REDIS_HOST}
-    port: ${REDIS_PORT}
+    url: ${REDIS_URL}

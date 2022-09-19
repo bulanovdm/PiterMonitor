@@ -9,11 +9,8 @@ import javax.annotation.PreDestroy
 
 @TestConfiguration
 class TestRedisConfiguration(redisProperties: RedisProperties) {
-    private val redisServer: RedisServer
-
-    init {
-        redisServer = RedisServer(redisProperties.port)
-    }
+    //embedded
+    private val redisServer: RedisServer = RedisServer(redisProperties.port)
 
     @PostConstruct
     fun postConstruct() {

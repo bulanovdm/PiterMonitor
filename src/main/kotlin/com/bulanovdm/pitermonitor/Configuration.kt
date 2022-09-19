@@ -1,9 +1,12 @@
 package com.bulanovdm.pitermonitor
 
+import io.lettuce.core.RedisURI
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
+import org.springframework.data.redis.connection.RedisPassword
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.RedisTemplate
@@ -18,8 +21,8 @@ class Configurations(val mailProperties: MailProperties, val redisProperties: Re
     @Bean
     fun mailSender(): JavaMailSender {
         val mailSender = JavaMailSenderImpl()
-        mailSender.host = "smtp.mailgun.org"
-        mailSender.port = 587
+        mailSender.host = mailProperties.host
+        mailSender.port = mailProperties.port.toInt()
         mailSender.username = mailProperties.username
         mailSender.password = mailProperties.password
 
@@ -34,18 +37,27 @@ class Configurations(val mailProperties: MailProperties, val redisProperties: Re
     }
 
     @Bean
-    fun redisConnectionFactory(): LettuceConnectionFactory {
-        //val redisURI = RedisURI.create(redisProperties.url)
+    @Profile("dev")
+    fun redisConnectionFactoryDev(): LettuceConnectionFactory {
         val redisStandaloneConfiguration = RedisStandaloneConfiguration(redisProperties.host, redisProperties.port)
-        //redisStandaloneConfiguration.database = redisProperties.database
-        //redisStandaloneConfiguration.password = RedisPassword.of(redisProperties.password)
+        redisStandaloneConfiguration.password = RedisPassword.of(redisProperties.password)
         return LettuceConnectionFactory(redisStandaloneConfiguration)
     }
 
     @Bean
-    fun redisTemplate(): RedisTemplate<String, Any> {
+    @Profile("prod")
+    fun redisConnectionFactoryProd(): LettuceConnectionFactory {
+        val redisURI = RedisURI.create(redisProperties.url)
+        val redisStandaloneConfiguration = RedisStandaloneConfiguration(redisURI.host, redisURI.port)
+        redisStandaloneConfiguration.database = redisURI.database
+        redisStandaloneConfiguration.password = RedisPassword.of(redisURI.password)
+        return LettuceConnectionFactory(redisStandaloneConfiguration)
+    }
+
+    @Bean
+    fun redisTemplate(lettuceConnectionFactory: LettuceConnectionFactory): RedisTemplate<String, Any> {
         val template = RedisTemplate<String, Any>()
-        template.setConnectionFactory(redisConnectionFactory())
+        template.setConnectionFactory(lettuceConnectionFactory)
         return template
     }
 }
@@ -55,4 +67,6 @@ class MailProperties {
     lateinit var username: String
     lateinit var password: String
     lateinit var recipient: String
+    lateinit var host: String
+    lateinit var port: String
 }
