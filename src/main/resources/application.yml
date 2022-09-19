@@ -9,3 +9,6 @@ mail:
 spring:
   redis:
     url: ${REDIS_URL}
+
+  profiles:
+    active: ${SPRING_PROFILES}
