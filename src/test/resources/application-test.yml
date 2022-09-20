@@ -2,3 +2,10 @@ spring:
   redis:
     host: localhost
     port: 6370
+
+mail:
+  conf:
+    host: mock
+    username: mock
+    password: mock
+    recipient: mock
