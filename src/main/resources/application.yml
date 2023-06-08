@@ -1,3 +1,20 @@
 spring:
   profiles:
     active: ${SPRING_PROFILE}
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: validate
+    open-in-view: off
+  datasource:
+    url: jdbc:sqlite:memory:books?cache=shared
+    username: sa
+    password: sa
+    driver-class-name: org.sqlite.JDBC
+
+mail:
+  conf:
+    host: mock
+    username: mock
+    password: mock
+    recipient: mock
