@@ -1,8 +1,3 @@
-spring:
-  redis:
-    host: localhost
-    port: 6370
-
 mail:
   conf:
     host: mock

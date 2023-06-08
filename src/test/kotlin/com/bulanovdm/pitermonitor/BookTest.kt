@@ -1,5 +1,8 @@
 package com.bulanovdm.pitermonitor
 
+import com.bulanovdm.pitermonitor.model.Book
+import com.bulanovdm.pitermonitor.model.Price
+import com.bulanovdm.pitermonitor.repo.BooksRepository
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,7 +19,7 @@ class UserRepositoryIntegrationTest {
 
     @Test
     fun shouldSaveBook_toRedis() {
-        val book = Book("Name", "https://example.com", mutableListOf(Variant("vName", "some price")))
+        val book = Book("Name", "https://example.com", mutableListOf(Price(variation = "vName", price = "some price")))
         val saved: Book = bookRepository.save(book)
         assertNotNull(saved)
     }
