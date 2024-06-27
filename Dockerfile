@@ -10,7 +10,7 @@ COPY gradle.properties gradle.properties
 
 RUN ./gradlew dependencies
 
-FROM eclipse-temurin:17-jdk-jammy as package
+FROM deps as package
 
 WORKDIR /build
 
