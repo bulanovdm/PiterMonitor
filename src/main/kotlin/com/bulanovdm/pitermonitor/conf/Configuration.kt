@@ -1,40 +1,46 @@
 package com.bulanovdm.pitermonitor.conf
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.cache.caffeine.CaffeineCache
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.mail.javamail.JavaMailSenderImpl
-import java.util.*
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.web.client.RestTemplate
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient
+import org.telegram.telegrambots.meta.generics.TelegramClient
+import java.time.Duration
 
 
-@Configuration
-class Configurations(val mailProperties: MailProperties) {
-
-    @Bean
-    fun mailSender(): JavaMailSender {
-        val mailSender = JavaMailSenderImpl()
-        mailSender.host = mailProperties.host
-        mailSender.port = 587
-        mailSender.username = mailProperties.username
-        mailSender.password = mailProperties.password
-
-        val props: Properties = mailSender.javaMailProperties
-        props["mail.transport.protocol"] = "smtp"
-        props["mail.smtp.auth"] = "true"
-        props["mail.smtp.starttls.enable"] = "true"
-        props["mail.smtp.socketFactory.class"] = "javax.net.ssl.SSLSocketFactory"
-        props["mail.smtp.socketFactory.port"] = "587"
-        props["mail.debug"] = "true"
-        return mailSender
-    }
-
+@ConfigurationProperties(prefix = "telegram.bot")
+class TelegramProperties {
+    lateinit var name: String
+    lateinit var token: String
 }
 
-@ConfigurationProperties(prefix = "mail.conf")
-class MailProperties {
-    lateinit var username: String
-    lateinit var password: String
-    lateinit var recipient: String
-    lateinit var host: String
+@Configuration
+class Configuration(
+    private val telegramProperties: TelegramProperties
+) {
+
+    @Bean
+    fun telegramClient(): TelegramClient = OkHttpTelegramClient(telegramProperties.token)
+
+    @Bean
+    fun bookCache(): CaffeineCache {
+        return CaffeineCache(
+            "books_cache",
+            Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofDays(30))
+                .maximumSize(1024)
+                .build()
+        )
+    }
+
+    @Bean
+    fun restTemplate(): RestTemplate {
+        val restTemplate = RestTemplate()
+        restTemplate.messageConverters.add(MappingJackson2HttpMessageConverter())
+        return restTemplate
+    }
 }

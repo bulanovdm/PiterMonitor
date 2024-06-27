@@ -1,6 +1,9 @@
-mail:
-  conf:
-    host: mock
-    username: mock
-    password: mock
-    recipient: mock
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    username: sa
+    url: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1
+    password: sa
+
+telegram:
+  test-chat-id: ${TEST_CHAT_ID}

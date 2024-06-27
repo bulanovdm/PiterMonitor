@@ -1,20 +1,31 @@
 spring:
   profiles:
-    active: ${SPRING_PROFILE}
+    active: ${SPRING_PROFILE:prod}
   jpa:
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:
       ddl-auto: validate
     open-in-view: off
   datasource:
-    url: jdbc:sqlite:memory:books?cache=shared
-    username: sa
-    password: sa
-    driver-class-name: org.sqlite.JDBC
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB_NAME:piter}?serverTimezone=UTC
+    username: piter
+    password: ${POSTGRES_PASS}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      validation-timeout: 360000
+  flyway:
+    enabled: true
+  cloud:
+    openfeign:
+      client:
+        config:
+          shorten-client:
+            url: "https://shorten-link-fast-free-cool.ru"
+  devtools:
+    add-properties: false
+telegram:
+  bot:
+    name: piter_discount_bot
+    token: ${TELEGRAM_TOKEN}
 
-mail:
-  conf:
-    host: mock
-    username: mock
-    password: mock
-    recipient: mock
+logging:
+  config: classpath:logback-local.xml

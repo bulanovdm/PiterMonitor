@@ -1,0 +1,42 @@
+networks:
+  piter-network:
+    name: piter-network
+    external: true
+
+services:
+  piter-monitor:
+    build:
+      context: .
+    expose:
+      - 8080
+    restart: always
+    networks:
+      - piter-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_PASS: ${POSTGRES_PASS}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      POSTGRES_HOST: postgres
+  postgres:
+    image: postgres:16.3
+    restart: always
+    user: postgres
+    networks:
+      - piter-network
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: piter
+      POSTGRES_USER: piter
+      POSTGRES_PASSWORD: ${POSTGRES_PASS}
+    expose:
+      - 5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  db-data:

@@ -2,131 +2,81 @@ package com.bulanovdm.pitermonitor.service
 
 import com.bulanovdm.pitermonitor.model.Book
 import com.bulanovdm.pitermonitor.model.Price
-import com.bulanovdm.pitermonitor.repo.BooksRepository
+import com.bulanovdm.pitermonitor.repo.BookService
+import com.bulanovdm.pitermonitor.telegram.TelegramDiscountSender
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
 import org.slf4j.LoggerFactory
-import org.springframework.boot.context.event.ApplicationReadyEvent
-import org.springframework.context.event.EventListener
-import org.springframework.core.env.Profiles
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
-import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArraySet
+import org.springframework.util.StopWatch
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
 
 @Service
-@Transactional
-class CrawlService(private val bookMailService: BookMailService, val booksRepository: BooksRepository) {
+class CrawlService(
+    private val linkUpdater: LinkUpdater,
+    private val bookService: BookService,
+    private val discountSender: TelegramDiscountSender,
+) {
 
     private val log = LoggerFactory.getLogger(javaClass)
-    val bookCHM = ConcurrentHashMap<String, String>(1024, 0.95f)
-    val bookToSend = CopyOnWriteArraySet<Book>()
-    val bookToSendWas = CopyOnWriteArraySet<Book>()
-    val discountSet = CopyOnWriteArraySet<Book>()
 
-    @Scheduled(initialDelay = 30, fixedRate = 30, timeUnit = TimeUnit.MINUTES)
-    fun readySendMail() {
-        for (kv in bookCHM) {
-            val getBookByLink: Document = Jsoup.connect(kv.value).get()
-            val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
-            val oldBook = booksRepository.findById(kv.key).get()
-            val changedBook = Book(kv.key, kv.value, mutableListOf())
+    @Scheduled(initialDelay = 1, fixedRate = 3600, timeUnit = TimeUnit.MINUTES)
+    fun findDiscount() {
+        val watch = StopWatch("schedule").also { it.start() }
+        val bookToSend = CopyOnWriteArrayList<Book>()
+
+        for (kv in linkUpdater.bookCHM) {
+            val getBookByLinkDef = CompletableFuture.supplyAsync { Jsoup.connect(kv.value).get() }
+            val oldBookDef = CompletableFuture.supplyAsync { bookService.findByTitle(kv.key) }
+
+            val getBookByLink = getBookByLinkDef.get()
+            val oldBook = oldBookDef.get()
+
+            val variants = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
+            val updatedBook = Book(kv.key, kv.value, oldBook?.shortLink, mutableListOf())
 
             for (variant in variants) {
-                val varTitle = variant.getElementsByClass("variant-title")
-                val varPrice: Elements = variant.getElementsByClass("right grid-6 price color")
+                val variantTitle = variant.getElementsByClass("variant-title")
+                val variantPrice: Elements = variant.getElementsByClass("right grid-6 price color")
                 val currentParsedPrice = Price(
-                    variation = varTitle.eachText().firstOrNull() ?: "Нет в продаже",
-                    price = varPrice.eachText().firstOrNull() ?: "Отсутсвует"
+                    variation = variantTitle.eachText().firstOrNull() ?: "Нет в продаже",
+                    price = variantPrice.eachText().firstOrNull() ?: "Отсутсвует"
                 )
-                changedBook.prices.add(currentParsedPrice)
-
-                if (!oldBook.prices.contains(currentParsedPrice) && changedBook.prices.any { it.variation == "Дисконт" }
-                ) {
-                    bookToSendWas.add(oldBook)
-                    bookToSend.add(changedBook)
-                }
+                updatedBook.prices.add(currentParsedPrice)
             }
-            if (oldBook != changedBook) {
-                log.info("Book updated after mail: {}", changedBook)
-                booksRepository.save(changedBook)
+
+            if (oldBook?.prices != updatedBook.prices && updatedBook.prices.any { it.variation.contentEquals("Дисконт") }) {
+                log.debug("Book added to send: {}", updatedBook)
+                bookToSend.add(updatedBook)
+            }
+
+            if (updatedBook != oldBook) {
+                log.info("Book updated after change: {}.\n Was: {}", updatedBook, oldBook)
+                bookService.save(updatedBook)
             }
         }
 
+        watch.stop().also { log.info("Parsing time result:\n {}", watch.prettyPrint()) }
+
+        sendUpdates(bookToSend)
+    }
+
+    private fun sendUpdates(bookToSend: MutableList<Book>) {
         if (bookToSend.isNotEmpty()) {
-            log.info("Mail ready. Books to send: {}", bookToSend.toString())
-            discountAll()
-            bookMailService.sendChangedBooks(bookToSend, bookToSendWas, discountSet)
-            bookToSendWas.clear()
-            bookToSend.clear()
-            discountSet.clear()
-        }
-    }
-
-    private fun discountAll() {
-        val findAll = booksRepository.findAll()
-        for (book in booksRepository.findAll()) {
-            for (price in book.prices) {
-                if (price.variation == "Дисконт" && price.price != "Отсутсвует" && price.price.isNotBlank()) {
-                    discountSet.add(book)
-                }
-            }
-        }
-    }
-
-    fun populate() {
-        log.info("Start Crawler at ${LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)}")
-        val findAllBooks = booksRepository.findAll()
-
-        for (i in 1 until 7) {
-            val doc: Document =
-                Jsoup.connect("https://www.piter.com/collection/kompyutery-i-internet?only_available=true&order=&page=$i&page_size=100&q=")
-                    .get()
-            val products: Elements = doc.select(".products-list > * > a")
-            for (product in products) {
-                if (product.attr("title").isNotEmpty()) {
-                    bookCHM[product.attr("title")] = "https://www.piter.com" + product.attr("href")
-                }
-            }
-        }
-
-        for (kv in bookCHM) {
-            val getBookByLink: Document = Jsoup.connect(kv.value).get()
-            val variants: Elements = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
-            val book = Book(kv.key, kv.value, mutableListOf())
-
-            for (variant in variants) {
-                val varTitle = variant.getElementsByClass("variant-title")
-                val varPrice: Elements = variant.getElementsByClass("right grid-6 price color")
-                val currentParsedPrice = Price(
-                    variation = varTitle.eachText().firstOrNull() ?: "Нет в продаже",
-                    price = varPrice.eachText().firstOrNull() ?: "Отсутсвует"
+            val batches = bookToSend.indices.groupBy { it / 20 }.map { entry -> entry.value.map(bookToSend::get) }
+            batches.forEachIndexed { i, books ->
+                val collectBooksToString = books.joinToString(
+                    transform = { "${it.title}: ${it.link}\nЦена: ${it.discounts().first().price}" },
+                    separator = "\n---\n"
                 )
 
-                if (!book.prices.contains(currentParsedPrice)) {
-                    book.prices.add(currentParsedPrice)
-                }
-
-                if (findAllBooks.none { it.title == book.title && it.prices.contains(currentParsedPrice) }) {
-                    log.info("Book saved: {}", book)
-                    booksRepository.save(book)
-                }
+                discountSender.sendUpdates("Новые скидки! (${i + 1}/${batches.size})\n\n" + collectBooksToString)
             }
         }
-        log.info("Books in memory: {}", booksRepository.count())
-    }
-
-    @EventListener
-    fun onApplicationEvent(event: ApplicationReadyEvent) {
-        if (event.applicationContext.environment.acceptsProfiles(Profiles.of("prod"))) {
-            populate()
-        }
+        bookToSend.clear()
     }
 }
-

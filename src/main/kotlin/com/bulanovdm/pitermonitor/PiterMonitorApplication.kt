@@ -1,17 +1,20 @@
 package com.bulanovdm.pitermonitor
 
-import com.bulanovdm.pitermonitor.conf.MailProperties
+import com.bulanovdm.pitermonitor.conf.TelegramProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
+import org.springframework.cache.annotation.EnableCaching
+import org.springframework.cloud.openfeign.EnableFeignClients
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @EnableScheduling
-@SpringBootApplication
 @EnableJpaRepositories
-@EnableConfigurationProperties(MailProperties::class, RedisProperties::class)
+@EnableCaching
+@EnableConfigurationProperties(TelegramProperties::class)
+@SpringBootApplication
+@EnableFeignClients
 class PiterMonitorApplication
 
 fun main(args: Array<String>) {
