@@ -13,9 +13,6 @@ class Book(
     @Column(name = "link")
     var link: String,
 
-    @Column(name = "short_link")
-    var shortLink: String?,
-
     @OneToMany(fetch = FetchType.LAZY, cascade = [CascadeType.MERGE, CascadeType.PERSIST])
     @JoinColumn(name = "book_id")
     var prices: MutableList<Price> = mutableListOf()

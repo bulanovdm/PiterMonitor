@@ -37,7 +37,7 @@ class CrawlService(
             val oldBook = oldBookDef.get()
 
             val variants = getBookByLink.select("div.grid-4.m-grid-12.s-grid-12.product-variants > *")
-            val updatedBook = Book(kv.key, kv.value, oldBook?.shortLink, mutableListOf())
+            val updatedBook = Book(kv.key, kv.value, mutableListOf())
 
             for (variant in variants) {
                 val variantTitle = variant.getElementsByClass("variant-title")

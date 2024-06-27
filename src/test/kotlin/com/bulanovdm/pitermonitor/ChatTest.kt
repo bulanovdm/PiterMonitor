@@ -26,7 +26,7 @@ class TelegramServiceIntegrationTest {
     @Test
     fun shouldSendMessage() {
         chatService.addChatSubscription(chatId.toLong())
-        val books = listOf(Book("Name", "https://example.com", "", mutableListOf(Price(variation = "Дисконт", price = "some price"))))
+        val books = listOf(Book("Name", "https://example.com", mutableListOf(Price(variation = "Дисконт", price = "some price"))))
         val collectBooksToString = books.joinToString(
             transform = { "${it.title}: ${it.link}\nЦена: ${it.discounts().first().price}" },
             separator = "\n --------- \n"
