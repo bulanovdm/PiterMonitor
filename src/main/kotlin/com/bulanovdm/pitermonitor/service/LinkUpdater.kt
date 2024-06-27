@@ -22,7 +22,7 @@ class LinkUpdater(
     private val log = LoggerFactory.getLogger(javaClass)
     val bookCHM = ConcurrentHashMap<String, String>(1024, 0.95f)
 
-    @Scheduled(initialDelay = 0, fixedRate = 1800, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 0, fixedRate = 180, timeUnit = TimeUnit.MINUTES)
     fun updateLinks() {
         log.info("Link updater started at ${LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)}")
 

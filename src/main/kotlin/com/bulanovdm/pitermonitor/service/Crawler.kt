@@ -24,7 +24,7 @@ class CrawlService(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(initialDelay = 1, fixedRate = 3600, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     fun findDiscount() {
         val watch = StopWatch("schedule").also { it.start() }
         val bookToSend = CopyOnWriteArrayList<Book>()
