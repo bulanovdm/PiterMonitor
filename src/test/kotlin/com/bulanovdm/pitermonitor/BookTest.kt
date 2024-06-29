@@ -19,7 +19,7 @@ class UserRepositoryIntegrationTest {
 
     @Test
     fun shouldSaveBook() {
-        val book = Book("Name", "https://example.com", "", mutableListOf(Price(variation = "vName", price = "some price")))
+        val book = Book("Name", "https://example.com", mutableListOf(Price(variation = "vName", price = "some price")))
         val saved: Book = bookRepository.save(book)
         assertNotNull(saved)
     }

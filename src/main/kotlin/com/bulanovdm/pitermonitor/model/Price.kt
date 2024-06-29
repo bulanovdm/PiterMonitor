@@ -43,6 +43,4 @@ class Price(
         result = 31 * result + id.hashCode()
         return result
     }
-
-
 }

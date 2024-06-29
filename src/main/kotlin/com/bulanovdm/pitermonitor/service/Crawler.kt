@@ -11,7 +11,6 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.util.StopWatch
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
 
@@ -27,7 +26,7 @@ class CrawlService(
     @Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     fun findDiscount() {
         val watch = StopWatch("schedule").also { it.start() }
-        val bookToSend = CopyOnWriteArrayList<Book>()
+        val bookToSend = mutableListOf<Book>()
 
         for (kv in linkUpdater.bookCHM) {
             val getBookByLinkDef = CompletableFuture.supplyAsync { Jsoup.connect(kv.value).get() }
@@ -49,8 +48,8 @@ class CrawlService(
                 updatedBook.prices.add(currentParsedPrice)
             }
 
-            if (oldBook?.prices != updatedBook.prices && updatedBook.prices.any { it.variation.contentEquals("Дисконт") }) {
-                log.debug("Book added to send: {}", updatedBook)
+            if (oldBook?.prices?.containsAll(updatedBook.prices) == false && updatedBook.prices.any { it.variation.contentEquals("Дисконт") }) {
+                log.info("Book added to send: {}", updatedBook)
                 bookToSend.add(updatedBook)
             }
 
@@ -62,21 +61,21 @@ class CrawlService(
 
         watch.stop().also { log.info("Parsing time result:\n {}", watch.prettyPrint()) }
 
-        sendUpdates(bookToSend)
+        if (bookToSend.isNotEmpty()) {
+            sendUpdates(bookToSend)
+        }
+
+        bookToSend.clear()
     }
 
-    private fun sendUpdates(bookToSend: MutableList<Book>) {
-        if (bookToSend.isNotEmpty()) {
-            val batches = bookToSend.indices.groupBy { it / 20 }.map { entry -> entry.value.map(bookToSend::get) }
-            batches.forEachIndexed { i, books ->
-                val collectBooksToString = books.joinToString(
-                    transform = { "${it.title}: ${it.link}\nЦена: ${it.discounts().first().price}" },
-                    separator = "\n---\n"
-                )
-
-                discountSender.sendUpdates("Новые скидки! (${i + 1}/${batches.size})\n\n" + collectBooksToString)
-            }
+    private fun sendUpdates(bookToSend: List<Book>) {
+        val batches = bookToSend.indices.groupBy { it / 20 }.map { entry -> entry.value.map(bookToSend::get) }
+        batches.forEachIndexed { i, books ->
+            val collectBooksToString = books.joinToString(
+                transform = { "${it.title}: ${it.link}\nЦена: ${it.discounts().first().price}" },
+                separator = "\n---\n"
+            )
+            discountSender.sendUpdates("Новые скидки! (${i + 1}/${batches.size})\n\n" + collectBooksToString)
         }
-        bookToSend.clear()
     }
 }
